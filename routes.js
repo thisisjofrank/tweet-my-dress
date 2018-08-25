@@ -169,11 +169,12 @@ var routes = function(app) {
   T.get('statuses/mentions_timeline', { screen_name: 'josdress', count: 1 }, function(err, data, response) {
     var color = data[0].text.replace('@josdress ', '');
     rgb = values[color];
-    fs.writeFile(__dirname+'/public/color.json', rgb, function(err){
-      if (err) throw err
-      console.log('File saved.')
-      res.redirect('/color.json')
-    });
+    res.send(rgb);
+    // fs.writeFile(__dirname+'/public/color.json', rgb, function(err){
+    //   if (err) throw err
+    //   console.log('File saved.')
+    //   res.redirect('/color.json')
+    // });
   })
     
   });  
