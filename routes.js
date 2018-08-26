@@ -167,7 +167,7 @@ var values = {
 
 var routes = function(app) {
   app.get("/", function(req, res) {
-    res.send("ohai");
+    res.send("try going to /dress");
   });
   app.get("/dress", function(req, res) {   
   T.get('statuses/mentions_timeline', { screen_name: 'josdress', count: 1 }, function(err, data, response) {
