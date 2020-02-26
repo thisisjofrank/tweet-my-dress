@@ -1,0 +1,129 @@
+#include <ESP8266WiFi.h>
+#include <Adafruit_NeoPixel.h>
+
+#define PIN            4 // What pin is the data being sent to the Neopixels
+#define NUMPIXELS      100 // How many Neopixels are you using?
+#define NUM_LEDS       100
+#define BRIGHTNESS     20
+ 
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRBW + NEO_KHZ800); // Set up the Neopixels strip, vital to check whether you have RGB or RGBW leds!
+
+const char* ssid     = "ilikepie";  // your wifi ssid
+const char* password = "supersecure";  //your wifi password
+const char* host = "tweet-my-dress.herokuapp.com";  // endpoint
+String gatheredStr = "rainbow";
+String prevStr ="";
+
+
+uint32_t Wheel(byte WheelPos) {
+  if(WheelPos < 85) {
+   return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+  } else if(WheelPos < 170) {
+   WheelPos -= 85;
+   return pixels.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  } else {
+   WheelPos -= 170;
+   return pixels.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+}
+
+void setup() {
+  pixels.begin(); // Start up Neopixels
+  Serial.begin(115200);
+
+  delay(100);
+
+ // We start by connecting to a WiFi network
+
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");  
+}
+
+int value = 0;
+
+void loop() {
+  delay(6000);
+  ++value;
+  
+ // Use WiFiClient class to create TCP connections
+  WiFiClient client;
+  const int httpPort = 80;
+  if (!client.connect(host, httpPort)) {
+    Serial.println("connection failed");
+    return;
+  }
+  
+ // We now create a URI for the request
+  String url = "/dress";
+  
+ // This will send the request to the server
+  client.print(String("GET ") + url + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Connection: close\r\n\r\n");
+  delay(500);
+  
+ // Read all the lines of the reply from server and print them to Serial
+  while(client.available()){
+    String line = client.readStringUntil('\r');
+    int pos1 = line.indexOf("{") + 1;
+    int pos2 = line.indexOf("}");
+    gatheredStr = line.substring(pos1, pos2);
+  }
+  Serial.print("gathered = " + gatheredStr);
+  Serial.print("prev = " + prevStr);
+
+  if (gatheredStr != prevStr) {
+  
+    if (gatheredStr.indexOf("rainbow") > -1) {
+       Serial.print("here");
+        uint16_t i, j;
+       
+        for(j=0; j<5000; j++) {
+          for(i=0; i<pixels.numPixels(); i++) {
+            pixels.setPixelColor(i, Wheel((i+j) & 255));
+          }
+          pixels.show();
+         delay(5);
+        }
+                
+    } else {
+        int commaIndex = gatheredStr.indexOf(",");
+        //  Search for the next comma just after the first
+        int secondCommaIndex = gatheredStr.indexOf(",", commaIndex + 1);
+        
+        String firstValue = gatheredStr.substring(0, commaIndex);
+        String secondValue = gatheredStr.substring(commaIndex + 1, secondCommaIndex);
+        String thirdValue = gatheredStr.substring(secondCommaIndex + 1); // To the end of the string
+
+        firstValue.trim();
+        secondValue.trim();
+        thirdValue.trim();
+        
+        int r = firstValue.toInt();
+        int g = secondValue.toInt();
+        int b = thirdValue.toInt();
+
+       Serial.println(r);
+       Serial.println(g);
+       Serial.println(b);
+        
+        for (int i = 0; i < NUMPIXELS; i++) {
+          pixels.setPixelColor(i, pixels.Color(r, b, g));
+        }
+
+        pixels.show(); // This sends the updated pixel color to the hardware.
+      
+        delay(5000); // Delay for a period of time (in milliseconds).
+    }
+    prevStr = gatheredStr;
+  }
+}
+
